@@ -1,10 +1,6 @@
-import os
+import streamlit as st
 import joblib
 import numpy as np
-from flask import Flask, render_template, request
-
-# Inisialisasi Flask
-app = Flask(__name__)
 
 # === Load artefak model ===
 tfidf = joblib.load("models/tfidf_vectorizer.joblib")
@@ -22,22 +18,29 @@ models = {
 def preprocess_text(text: str) -> str:
     return text.lower().strip()
 
-# === Routing utama ===
-@app.route("/", methods=["GET", "POST"])
-def index():
-    prediction = None
-    selected_model = None
-    comment = None
+# === Konfigurasi Halaman Streamlit ===
+st.set_page_config(page_title="Aplikasi Analisis Sentimen", layout="wide")
+st.title("📊 Aplikasi Analisis Sentimen")
+st.markdown("Pilih model dan masukkan komentar untuk memprediksi sentimen.")
 
-    if request.method == "POST":
-        comment = request.form["comment"]
-        selected_model = request.form["model"]
+# === Form Input ===
+with st.form("sentiment_form"):
+    comment = st.text_area("Masukkan komentar:", height=150)
+    selected_model = st.selectbox(
+        "Pilih model yang digunakan:",
+        ["SVM", "Naive Bayes", "Random Forest", "Stacking"]
+    )
+    submitted = st.form_submit_button("Prediksi")
 
-        # Preprocessing teks input
+# === Proses Prediksi ===
+if submitted:
+    if not comment.strip():
+        st.warning("⚠️ Teks komentar tidak boleh kosong.")
+    else:
         clean_comment = preprocess_text(comment)
         vectorized_comment = tfidf.transform([clean_comment])
 
-        # Jika user memilih stacking, hitung probabilitas dari semua model dasar
+        # Jika user memilih stacking
         if selected_model == "Stacking":
             proba_list = []
             for name in ["SVM", "Naive Bayes", "Random Forest"]:
@@ -45,7 +48,6 @@ def index():
                 if hasattr(model, "predict_proba"):
                     proba = model.predict_proba(vectorized_comment)
                 else:
-                    # Fallback jika model tidak punya predict_proba
                     decision = model.decision_function(vectorized_comment)
                     proba = np.exp(decision) / np.sum(np.exp(decision), axis=1, keepdims=True)
                 proba_list.append(proba)
@@ -56,16 +58,17 @@ def index():
             model = models[selected_model]
             pred_encoded = model.predict(vectorized_comment)
 
-        # Decode label hasil prediksi
         prediction = label_encoder.inverse_transform(pred_encoded)[0]
 
-    return render_template(
-        "index.html",
-        prediction=prediction,
-        selected_model=selected_model,
-        comment=comment
-    )
+        # === Hasil Prediksi ===
+        st.success(f"**Hasil Prediksi Sentimen:** {prediction}")
 
-# === Jalankan Flask ===
-if __name__ == "__main__":
-    app.run(debug=True)
+        # Menampilkan informasi tambahan jika model bukan stacking
+        if selected_model != "Stacking" and hasattr(models[selected_model], "predict_proba"):
+            probs = models[selected_model].predict_proba(vectorized_comment)[0]
+            classes = label_encoder.classes_
+            st.subheader("📌 Probabilitas Prediksi")
+            st.dataframe({
+                "Sentimen": classes,
+                "Probabilitas": np.round(probs, 3)
+            })
