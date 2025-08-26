@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Analisis Sentimen</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Aplikasi Analisis Sentimen</h1>
+        <p>Masukkan komentar dan pilih model prediksi:</p>
+
+        <form method="POST">
+            <!-- Input komentar -->
+            <label for="comment">Komentar:</label>
+            <textarea id="comment" name="comment" rows="4" placeholder="Tulis komentar di sini..." required>{{ comment if comment else "" }}</textarea>
+            
+            <!-- Pilih model -->
+            <label for="model">Pilih Model:</label>
+            <select id="model" name="model" required>
+                <option value="SVM" {% if selected_model == "SVM" %}selected{% endif %}>SVM</option>
+                <option value="Naive Bayes" {% if selected_model == "Naive Bayes" %}selected{% endif %}>Naive Bayes</option>
+                <option value="Random Forest" {% if selected_model == "Random Forest" %}selected{% endif %}>Random Forest</option>
+                <option value="Stacking" {% if selected_model == "Stacking" %}selected{% endif %}>Stacking</option>
+            </select>
+
+            <!-- Tombol submit -->
+            <button type="submit">Prediksi</button>
+        </form>
+
+        <!-- Tampilkan hasil prediksi jika ada -->
+        {% if prediction %}
+            <div class="result">
+                <h2>Hasil Prediksi</h2>
+                <p><strong>Komentar:</strong> {{ comment }}</p>
+                <p><strong>Model:</strong> {{ selected_model }}</p>
+                <p><strong>Sentimen:</strong> <span class="sentiment">{{ prediction }}</span></p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
